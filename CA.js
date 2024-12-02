@@ -8,8 +8,8 @@ const app = express();
 const port = 3000;
 
 // Paths to the CA key and certificate
-const CA_KEY_PATH = "./ca.key";
-const CA_CERT_PATH = "./ca.crt";
+const CA_KEY_PATH = "./cafiles/ca.key";
+const CA_CERT_PATH = "./cafiles/ca.crt";
 const CA_PASS = "mysecurepassword";
 
 // Create the CA private key and certificate if they don't exist

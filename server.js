@@ -2,11 +2,12 @@ const https = require("https");
 const fs = require("fs");
 const path = require("path");
 const axios = require("axios");
+const { execSync } = require("child_process"); // Import execSync
 
 // Paths to server's key and certificate
-const SERVER_KEY_PATH = "./server.key";
-const SERVER_CSR_PATH = "./server.csr";
-const SERVER_CERT_PATH = "./server.crt";
+const SERVER_KEY_PATH = "./serverfiles/server.key";
+const SERVER_CSR_PATH = "./serverfiles/server.csr";
+const SERVER_CERT_PATH = "./serverfiles/server.crt";
 
 // Path to the CA certificate
 const CA_CERT_PATH = "./ca.crt";
@@ -23,7 +24,7 @@ function generateServerKeyAndCSR() {
 
   // Generate server CSR
   execSync(
-    `openssl req -new -key ${SERVER_KEY_PATH} -out ${SERVER_CSR_PATH} -passin pass:mysecurepassword -subj "/C=US/ST=State/L=City/O=MyOrg/OU=MyUnit/CN=MyServer"`
+    `openssl req -new -key ${SERVER_KEY_PATH} -out ${SERVER_CSR_PATH} -passin pass:mysecurepassword -subj "/C=US/ST=State/L=City/O=MyOrg/OU=MyUnit/CN=localhost"`
   );
   console.log("Server private key and CSR generated.");
 }
@@ -54,15 +55,21 @@ async function startServer() {
   const options = {
     key: fs.readFileSync(SERVER_KEY_PATH),
     cert: fs.readFileSync(SERVER_CERT_PATH),
-    ca: fs.readFileSync(CA_CERT_PATH), // Include the CA certificate to verify the client
-    rejectUnauthorized: true, // Reject unauthorized certificates
+    ca: fs.readFileSync(CA_CERT_PATH),
+    passphrase: "mysecurepassword", // Add the passphrase here
+    rejectUnauthorized: true,
   };
+
+  
+  
 
   // Create the HTTPS server
   const server = https.createServer(options, (req, res) => {
     res.writeHead(200, { "Content-Type": "text/plain" });
     res.end("Hello, client! You have connected to the HTTPS server.\n");
   });
+
+  
 
   // Start the HTTPS server
   server.listen(4433, () => {

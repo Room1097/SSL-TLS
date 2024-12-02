@@ -3,7 +3,7 @@ const fs = require("fs");
 const axios = require("axios");
 
 // Path to the CA certificate
-const CA_CERT_PATH = "./ca.crt";
+const CA_CERT_PATH = "./clientfiles/ca.crt";
 
 // Download the CA certificate if not already present
 async function downloadCACertificate() {
