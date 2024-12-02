@@ -1,3 +1,4 @@
+require('dotenv').config(); // Load .env file
 const http = require('http');
 
 const server = http.createServer((req, res) => {
@@ -5,7 +6,9 @@ const server = http.createServer((req, res) => {
   res.end('Hello, client! You have connected to the server.\n');
 });
 
-const PORT = 3000;
-server.listen(PORT, () => {
-  console.log(`Server is running on http://localhost:${PORT}`);
+const PORT = process.env.PORT_SERVER;
+const HOST = process.env.IP;
+
+server.listen(PORT, HOST, () => {
+  console.log(`Server is running on http://${HOST}:${PORT}`);
 });

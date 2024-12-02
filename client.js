@@ -1,8 +1,9 @@
+require('dotenv').config(); 
 const http = require('http');
 
 const options = {
-  hostname: 'localhost', 
-  port: 3000,
+  hostname: process.env.IP, 
+  port: process.env.PORT_SERVER,
   path: '/',
   method: 'GET'
 };
