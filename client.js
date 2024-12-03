@@ -1,6 +1,14 @@
+require("dotenv").config(); // Load environment variables
 const https = require("https");
 const fs = require("fs");
 const axios = require("axios");
+
+// Load environment variables
+const CA_SERVER_URL =
+  `http://${process.env.CA_HOSTNAME}:${process.env.PORT_CA}` ||
+  "http://localhost:3000";
+const SERVER_HOSTNAME = process.env.SERVER_HOSTNAME || "localhost";
+const SERVER_PORT = process.env.SERVER_PORT || 4433;
 
 // Path to the CA certificate
 const CA_CERT_PATH = "./clientfiles/ca.crt";
@@ -9,13 +17,14 @@ const CA_CERT_PATH = "./clientfiles/ca.crt";
 async function downloadCACertificate() {
   if (!fs.existsSync(CA_CERT_PATH)) {
     try {
-      const response = await axios.get("http://localhost:3000/ca.crt", {
+      console.log("Downloading CA certificate...");
+      const response = await axios.get(`${CA_SERVER_URL}/ca.crt`, {
         responseType: "arraybuffer",
       });
       fs.writeFileSync(CA_CERT_PATH, response.data);
-      console.log("CA certificate downloaded.");
+      console.log("CA certificate downloaded successfully.");
     } catch (error) {
-      console.error("Failed to download CA certificate:", error);
+      console.error("Failed to download CA certificate:", error.message);
       process.exit(1);
     }
   } else {
@@ -31,13 +40,15 @@ async function makeSecureRequest() {
   // Create a secure request using the CA certificate to trust the server
   const caCert = fs.readFileSync(CA_CERT_PATH);
   const options = {
-    hostname: "localhost",
-    port: 4433,
+    hostname: SERVER_HOSTNAME,
+    port: SERVER_PORT,
     path: "/",
     method: "GET",
     ca: caCert, // Trust the CA certificate
     rejectUnauthorized: true, // Reject unauthorized certificates
   };
+
+  console.log(`Connecting to https://${SERVER_HOSTNAME}:${SERVER_PORT}...`);
 
   const req = https.request(options, (res) => {
     console.log(`Server response status: ${res.statusCode}`);

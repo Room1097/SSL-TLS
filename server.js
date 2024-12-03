@@ -1,81 +1,93 @@
+require("dotenv").config(); // Load environment variables
 const https = require("https");
 const fs = require("fs");
-const path = require("path");
 const axios = require("axios");
-const { execSync } = require("child_process"); // Import execSync
+const { execSync } = require("child_process");
+const unzipper = require("unzipper");
 
-// Paths to server's key and certificate
+// Load environment variables
+const PORT_SERVER = process.env.PORT_SERVER || 4433;
+const SERVER_HOSTNAME = process.env.SERVER_HOSTNAME || "localhost";
+const CA_SERVER_URL =
+  `http://${process.env.CA_HOSTNAME}:${process.env.PORT_CA}` ||
+  "http://localhost:3000";
+
+// Paths to server key, CSR, and certificate
 const SERVER_KEY_PATH = "./serverfiles/server.key";
 const SERVER_CSR_PATH = "./serverfiles/server.csr";
 const SERVER_CERT_PATH = "./serverfiles/server.crt";
+const CA_CERT_PATH = "./serverfiles/ca.crt";
 
-// Path to the CA certificate
-const CA_CERT_PATH = "./ca.crt";
-
-// CA server URL
-const CA_SERVER_URL = "http://localhost:3000";
-
-// Generate server's private key and CSR
 function generateServerKeyAndCSR() {
-  // Generate server private key (encrypted)
   execSync(
     `openssl genpkey -algorithm RSA -out ${SERVER_KEY_PATH} -aes256 -pass pass:mysecurepassword`
   );
-
-  // Generate server CSR
   execSync(
-    `openssl req -new -key ${SERVER_KEY_PATH} -out ${SERVER_CSR_PATH} -passin pass:mysecurepassword -subj "/C=US/ST=State/L=City/O=MyOrg/OU=MyUnit/CN=localhost"`
+    `openssl req -new -key ${SERVER_KEY_PATH} -out ${SERVER_CSR_PATH} -passin pass:mysecurepassword -subj "/C=US/ST=State/L=City/O=MyOrg/OU=MyUnit/CN=${SERVER_HOSTNAME}"`
   );
-  console.log("Server private key and CSR generated.");
+  console.log("Server key and CSR generated.");
 }
 
-// Request the CA to sign the server's CSR and obtain the signed certificate
 async function signCSR() {
   const csr = fs.readFileSync(SERVER_CSR_PATH, "utf8");
 
   try {
-    const response = await axios.post(`${CA_SERVER_URL}/sign-csr`, { csr });
-    fs.writeFileSync(SERVER_CERT_PATH, response.data);
-    console.log("Server certificate signed by CA.");
+    const response = await axios.post(
+      `${CA_SERVER_URL}/sign-csr`,
+      { csr },
+      {
+        responseType: "stream",
+      }
+    );
+
+    const zipPath = "./serverfiles/certs.zip";
+    const writer = fs.createWriteStream(zipPath);
+    response.data.pipe(writer);
+
+    await new Promise((resolve, reject) => {
+      writer.on("finish", resolve);
+      writer.on("error", reject);
+    });
+
+    await extractCertsFromZip(zipPath);
+    console.log("Certificates retrieved.");
   } catch (error) {
-    console.error("Error signing server CSR:", error);
+    console.error("Error signing CSR:", error);
     process.exit(1);
   }
 }
 
-// Start HTTPS server once the certificate is signed
-async function startServer() {
-  // Generate the server's private key and CSR
-  generateServerKeyAndCSR();
+async function extractCertsFromZip(zipPath) {
+  return new Promise((resolve, reject) => {
+    fs.createReadStream(zipPath)
+      .pipe(unzipper.Extract({ path: "./serverfiles" }))
+      .on("close", resolve)
+      .on("error", reject);
+  });
+}
 
-  // Request the CA to sign the CSR
+async function startServer() {
+  generateServerKeyAndCSR();
   await signCSR();
 
-  // Create HTTPS server options with server's key and signed certificate
   const options = {
     key: fs.readFileSync(SERVER_KEY_PATH),
     cert: fs.readFileSync(SERVER_CERT_PATH),
     ca: fs.readFileSync(CA_CERT_PATH),
-    passphrase: "mysecurepassword", // Add the passphrase here
+    passphrase: "mysecurepassword",
     rejectUnauthorized: true,
   };
 
-  
-  
-
-  // Create the HTTPS server
   const server = https.createServer(options, (req, res) => {
     res.writeHead(200, { "Content-Type": "text/plain" });
-    res.end("Hello, client! You have connected to the HTTPS server.\n");
+    res.end("Hello, client! Connected securely.\n");
   });
 
-  
-
-  // Start the HTTPS server
-  server.listen(4433, () => {
-    console.log("HTTPS server running at https://localhost:4433");
+  server.listen(PORT_SERVER, SERVER_HOSTNAME, () => {
+    console.log(
+      `HTTPS server running at https://${SERVER_HOSTNAME}:${PORT_SERVER}`
+    );
   });
 }
 
-// Start the server
 startServer();
