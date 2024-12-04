@@ -36,7 +36,7 @@ function generateCA() {
 
   if (!fs.existsSync(CA_CERT_PATH)) {
     execSync(
-      `openssl req -key ${CA_KEY_PATH} -new -x509 -out ${CA_CERT_PATH} -days 3650 -passin pass:${CA_PASS} -subj "/C=US/ST=State/L=City/O=MyOrg/OU=MyUnit/CN=${IP}"`
+      `openssl req -key ${CA_KEY_PATH} -new -x509 -out ${CA_CERT_PATH} -days 3650 -passin pass:${CA_PASS} -subj "/C=US/ST=State/L=City/O=MyOrg/OU=MyUnit/CN=MYCN"`
     );
     console.log("CA certificate generated.");
   }
